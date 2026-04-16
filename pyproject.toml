@@ -21,8 +21,8 @@ classifiers = [
     "Topic :: Text Processing :: Linguistic",
 ]
 dependencies = [
-    "numpy",
-    "onnxruntime",
+    "numpy>=1.20",
+    "onnxruntime>=1.10",
 ]
 
 [project.urls]
