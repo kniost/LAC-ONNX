@@ -9,62 +9,44 @@
 - **零 Paddle 依赖** — 仅需 `onnxruntime` + `numpy`
 - **轻量** — 模型文件约 30 MB
 - **完整功能** — 分词 + 词性标注 + NER，与原始 LAC 结果完全一致
-- **即开即用** — 无需下载模型，无需联网
+- **即开即用** — 模型随包安装，无需下载，无需联网
 
-## 快速开始
-
-### 安装依赖
+## 安装
 
 ```bash
-pip install onnxruntime numpy
+pip install lac-onnx
 ```
 
-### 使用
+## 使用
 
 ```python
-from example import predict
+from lac_onnx import LAC
 
-results = predict('张三在北京市工作')
-for word, tag in results:
-    print(f'{word}\t{tag}')
+lac = LAC()
+
+# 单句分析
+result = lac.run('张三在北京市工作')
+# [('张三', 'PER'), ('在', 'p'), ('北京市', 'LOC'), ('工作', 'n')]
+
+# 批量分析
+results = lac.run(['张三在北京', '李四去上海'])
+# [[('张三', 'PER'), ...], [('李四', 'PER'), ...]]
+
+# NER 过滤
+for word, tag in lac.run('张三在中国银行办理业务'):
+    if tag in ('PER', 'LOC', 'ORG'):
+        print(word, tag)
 ```
 
-输出：
+## 自定义模型目录
 
-```
-张三    PER
-在      p
-北京市  LOC
-工作    n
+```python
+lac = LAC(model_dir='/path/to/your/model')
 ```
 
-### 直接运行示例
+目录下需包含：`lac_encoder.onnx`、`lac_crf_transitions.npy`、`word.dic`、`tag.dic`、`q2b.dic`。
 
-```bash
-python example.py
-```
-
-## 文件说明
-
-| 文件 | 大小 | 说明 |
-|---|---|---|
-| `lac_encoder.onnx` | 30 MB | ONNX 模型（Embedding + BiGRU + FC） |
-| `lac_crf_transitions.npy` | 14 KB | CRF 转移矩阵（numpy 格式） |
-| `word.dic` | 745 KB | 字符词表（58224 字符 → ID 映射） |
-| `tag.dic` | 425 B | 标签表（57 个 BIO 标签） |
-| `q2b.dic` | 44 KB | 全角→半角字符映射 |
-| `paddle_static/` | 30 MB | 原始 Paddle 静态图模型（供参考） |
-
-## 模型架构
-
-```
-输入字符 → 字符 ID 编码 → Embedding(128d)
-  → 2层双向 GRU(hidden=128) → FC(256→59)  ← ONNX 模型
-  → CRF Viterbi 解码                       ← numpy 实现
-  → BIO 标签序列 → 分词 + 标注结果
-```
-
-## 常见标签
+## 标签说明
 
 | 标签 | 含义 | 标签 | 含义 |
 |---|---|---|---|
@@ -76,7 +58,27 @@ python example.py
 | p | 介词 | c | 连词 |
 | u | 助词 | d | 副词 |
 
-完整标签集参见 `tag.dic`。
+完整标签集参见包内 `tag.dic`。
+
+## 模型架构
+
+```
+输入字符 → 字符 ID 编码 → Embedding(128d)
+  → 2层双向 GRU(hidden=128) → FC(256→59)  ← ONNX 模型
+  → CRF Viterbi 解码                       ← numpy 实现
+  → BIO 标签序列 → 分词 + 标注结果
+```
+
+## 文件说明
+
+| 文件 | 大小 | 说明 |
+|---|---|---|
+| `lac_onnx/lac_encoder.onnx` | 30 MB | ONNX 模型（Embedding + BiGRU + FC） |
+| `lac_onnx/lac_crf_transitions.npy` | 14 KB | CRF 转移矩阵 |
+| `lac_onnx/word.dic` | 745 KB | 字符词表（58224 字符） |
+| `lac_onnx/tag.dic` | 425 B | 标签表（57 个 BIO 标签） |
+| `lac_onnx/q2b.dic` | 44 KB | 全角→半角字符映射 |
+| `paddle_static/` | 30 MB | 原始 Paddle 静态图模型（仅供参考，不含在 pip 包中） |
 
 ## 转换过程
 
